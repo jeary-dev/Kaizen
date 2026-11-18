@@ -1,0 +1,110 @@
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { EditorView } from "@codemirror/view";
+import { tags as t } from "@lezer/highlight";
+
+/** Sakura on sumi ink. Colours mirror the CSS variables in globals.css. */
+export const palette = {
+  ink: "#0f0d0e",
+  surface: "#161314",
+  raised: "#1d191b",
+  line: "#2a2427",
+  text: "#f2ece8",
+  muted: "#c4bdb8",
+  dim: "#8a817c",
+  faint: "#5c5552",
+  sakura: "#d9668a",
+  blossom: "#f0a3bc",
+  matcha: "#b5cf8f",
+  amber: "#e0b45c",
+  wisteria: "#b9a6e3",
+  red: "#e5737a",
+};
+
+const editorTheme = EditorView.theme(
+  {
+    "&": { color: palette.text, backgroundColor: palette.ink, height: "100%", fontSize: "13.5px" },
+    ".cm-scroller": { fontFamily: "var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", lineHeight: "1.65" },
+    ".cm-content": { caretColor: palette.blossom, padding: "12px 0" },
+    ".cm-cursor, .cm-dropCursor": { borderLeftColor: palette.blossom, borderLeftWidth: "2px" },
+    "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection": {
+      backgroundColor: "#d9668a38",
+    },
+    ".cm-activeLine": { backgroundColor: "#ffffff06" },
+    ".cm-activeLineGutter": { backgroundColor: "#ffffff06", color: palette.muted },
+    ".cm-gutters": { backgroundColor: palette.ink, color: palette.faint, border: "none", paddingLeft: "6px" },
+    ".cm-lineNumbers .cm-gutterElement": { padding: "0 10px 0 6px", minWidth: "36px" },
+    ".cm-foldPlaceholder": { backgroundColor: palette.raised, border: `1px solid ${palette.line}`, color: palette.dim },
+    ".cm-matchingBracket, .cm-nonmatchingBracket": { backgroundColor: "#ffffff12", outline: `1px solid ${palette.faint}` },
+    ".cm-searchMatch": { backgroundColor: "#e0b45c33", outline: "1px solid #e0b45c66" },
+    ".cm-searchMatch.cm-searchMatch-selected": { backgroundColor: "#d9668a55" },
+    ".cm-selectionMatch": { backgroundColor: "#ffffff10" },
+    ".cm-specialChar": { color: palette.red },
+    ".cm-tooltip": { backgroundColor: palette.raised, border: `1px solid ${palette.line}`, color: palette.text, borderRadius: "8px" },
+    ".cm-tooltip-lint": { padding: "2px" },
+    ".cm-diagnostic": { padding: "6px 10px", borderLeftWidth: "3px" },
+    ".cm-diagnostic-error": { borderLeftColor: palette.red },
+    ".cm-diagnostic-warning": { borderLeftColor: palette.amber },
+    ".cm-lintRange-error": { backgroundImage: "none", textDecoration: `underline wavy ${palette.red}`, textUnderlineOffset: "3px" },
+    ".cm-lintRange-warning": { backgroundImage: "none", textDecoration: `underline wavy ${palette.amber}`, textUnderlineOffset: "3px" },
+    ".cm-lint-marker": { width: "0.8em", height: "0.8em" },
+    ".cm-panels": { backgroundColor: palette.surface, color: palette.text },
+    ".cm-panels.cm-panels-top": { borderBottom: `1px solid ${palette.line}` },
+    ".cm-panels.cm-panels-bottom": { borderTop: `1px solid ${palette.line}` },
+    ".cm-panel.cm-search": { padding: "8px 10px", fontFamily: "inherit", fontSize: "13px" },
+    ".cm-panel.cm-search label": { color: palette.muted, fontSize: "12.5px" },
+    ".cm-panel.cm-search input[type=checkbox]": { accentColor: palette.sakura },
+    ".cm-textfield": {
+      backgroundColor: palette.ink,
+      border: `1px solid ${palette.line}`,
+      borderRadius: "6px",
+      color: palette.text,
+      padding: "4px 8px",
+      fontSize: "13px",
+    },
+    ".cm-textfield:focus": { outline: `2px solid ${palette.sakura}`, outlineOffset: "0" },
+    ".cm-button": {
+      backgroundImage: "none",
+      backgroundColor: palette.raised,
+      border: `1px solid ${palette.line}`,
+      borderRadius: "6px",
+      color: palette.text,
+      padding: "4px 10px",
+      fontSize: "12.5px",
+    },
+    ".cm-button:hover": { borderColor: palette.faint },
+    ".cm-panel.cm-search [name=close]": { color: palette.dim, fontSize: "18px", right: "8px" },
+    // Locked secrets
+    ".cm-kz-secret": {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "5px",
+      padding: "0 7px",
+      margin: "0 1px",
+      borderRadius: "5px",
+      backgroundColor: "#d9668a1f",
+      border: "1px solid #d9668a55",
+      color: palette.blossom,
+      fontSize: "12px",
+      lineHeight: "1.5",
+      cursor: "default",
+      verticalAlign: "baseline",
+    },
+    ".cm-kz-secret svg": { width: "11px", height: "11px", flex: "none" },
+  },
+  { dark: true },
+);
+
+const highlight = HighlightStyle.define([
+  { tag: [t.propertyName, t.definition(t.propertyName), t.attributeName], color: palette.blossom },
+  { tag: [t.string, t.special(t.string), t.character], color: palette.matcha },
+  { tag: [t.number, t.integer, t.float], color: palette.amber },
+  { tag: [t.bool, t.null, t.atom, t.keyword], color: palette.wisteria },
+  { tag: [t.comment, t.lineComment, t.blockComment], color: "#71676a", fontStyle: "italic" },
+  { tag: [t.punctuation, t.separator, t.bracket, t.squareBracket, t.brace, t.operator], color: palette.dim },
+  { tag: [t.heading, t.typeName, t.className, t.namespace], color: palette.sakura, fontWeight: "600" },
+  { tag: [t.meta, t.labelName, t.annotation, t.processingInstruction], color: palette.dim },
+  { tag: [t.variableName, t.name], color: palette.text },
+  { tag: t.invalid, color: palette.red },
+]);
+
+export const sakuraTheme = [editorTheme, syntaxHighlighting(highlight)];

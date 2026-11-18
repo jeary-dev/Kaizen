@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Sumi ink with sakura. Dark by design: the editor is used next to a game and a terminal. */
+@theme {
+  --color-ink: #0f0d0e;
+  --color-surface: #161314;
+  --color-raised: #1d191b;
+  --color-line: #2a2427;
+  --color-line-strong: #3a3236;
+  --color-text: #f2ece8;
+  --color-muted: #c4bdb8;
+  --color-dim: #8a817c;
+  --color-faint: #5c5552;
+  --color-sakura: #d9668a;
+  --color-blossom: #f0a3bc;
+  --color-matcha: #9ccf8f;
+  --color-amber: #e0b45c;
+  --color-red: #e5737a;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-kanji: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", "Noto Serif CJK JP", serif;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-petal: petal 18s linear infinite;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes petal {
+    0% {
+      transform: translate3d(0, -10vh, 0) rotate(0deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.55;
+    }
+    90% {
+      opacity: 0.4;
+    }
+    100% {
+      transform: translate3d(-18vw, 105vh, 0) rotate(540deg);
+      opacity: 0;
+    }
   }
 }
 
+:root {
+  color-scheme: dark;
+}
+
+html {
+  background: var(--color-ink);
+  color: var(--color-text);
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: #d9668a55;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-sakura);
+  outline-offset: 2px;
+}
+
+/* Thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* CodeMirror fold markers and merge view, which can't take Tailwind classes. */
+.cm-kz-fold {
+  color: var(--color-faint);
+  padding: 0 2px;
+  cursor: pointer;
+}
+.cm-kz-fold:hover {
+  color: var(--color-muted);
+}
+.cm-mergeView {
+  background: var(--color-ink);
+}
+.cm-mergeView .cm-changedLine,
+.cm-merge-b .cm-changedLine {
+  background-color: #9ccf8f12;
+}
+.cm-merge-a .cm-changedLine {
+  background-color: #e5737a14;
+}
+.cm-merge-b .cm-changedText {
+  background: #9ccf8f38;
+  text-decoration: none;
+}
+.cm-merge-a .cm-changedText,
+.cm-deletedChunk .cm-deletedText {
+  background: #e5737a40;
+  text-decoration: none;
+}
+.cm-deletedChunk {
+  background-color: #e5737a12;
+}
+.cm-merge-spacer {
+  background: repeating-linear-gradient(-45deg, transparent 0 6px, #ffffff05 6px 12px);
+}
+.cm-collapsedLines {
+  background: var(--color-surface) !important;
+  color: var(--color-dim) !important;
+  border-color: var(--color-line) !important;
+  font-size: 12px;
+}
+.cm-mergeViewEditor + .cm-mergeViewEditor,
+.cm-merge-revert + .cm-mergeViewEditor {
+  border-left: 1px solid var(--color-line);
 }

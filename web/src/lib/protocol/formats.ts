@@ -35,3 +35,13 @@ export const displayApplyCode = (code: string): string => `${code.slice(0, 4)} $
 
 export const PLACEHOLDER_ID = /^KAIZEN_SECRET_[1-9][0-9]*_[a-z0-9]{4}$/;
 export const PLACEHOLDER_ANY = /KAIZEN_SECRET_[1-9][0-9]*_[a-z0-9]{4}/g;
+
+/** The placeholder tag (last 4 characters), or null if [id] is not a placeholder id. */
+export const placeholderTag = (id: string): string | null => (PLACEHOLDER_ID.test(id) ? id.slice(-4) : null);
+
+/**
+ * Placeholders of one session, bounded so that `KAIZEN_SECRET_1_abcdX` or `xKAIZEN_SECRET_…` do not
+ * count. Mirrors the plugin's `Redactor.placeholderPattern`, which is what decides on apply.
+ */
+export const placeholderPattern = (tag: string): RegExp =>
+  new RegExp(`(?<![A-Za-z0-9_])KAIZEN_SECRET_[1-9][0-9]*_${tag.replace(/[^a-z0-9]/g, "")}(?![A-Za-z0-9_])`, "g");
