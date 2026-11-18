@@ -1,0 +1,48 @@
+name: Kaizen
+version: '${project.version}'
+main: dev.jeary.kaizen.KaizenPlugin
+api-version: '1.20'
+description: "${project.description}"
+author: jeary-dev
+website: 'https://github.com/jeary-dev/Kaizen'
+
+# Downloaded by the server on first start instead of being shaded into the jar. The versions are
+# filtered from the pom, so the server loads exactly what the test suite ran against.
+libraries:
+  - org.jetbrains.kotlin:kotlin-stdlib:${kotlin.version}
+  - org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:${coroutines.version}
+  - org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:${serialization.version}
+  - org.snakeyaml:snakeyaml-engine:${snakeyaml-engine.version}
+
+# Commands are registered at runtime by Incendo Cloud.
+
+permissions:
+  kaizen.use:
+    description: Open the web editor, apply changes, view history and undo. Grants access to every config file.
+    default: op
+    children:
+      kaizen.command.editor: true
+      kaizen.command.apply: true
+      kaizen.command.history: true
+      kaizen.command.undo: true
+  kaizen.admin:
+    description: Everything, including reloading Kaizen's own config.
+    default: op
+    children:
+      kaizen.use: true
+      kaizen.command.reload: true
+  kaizen.command.editor:
+    description: Open the web editor for some or all config files.
+    default: op
+  kaizen.command.apply:
+    description: Apply changes saved in the web editor.
+    default: op
+  kaizen.command.history:
+    description: List recent applies and undos.
+    default: op
+  kaizen.command.undo:
+    description: Restore files from a backup.
+    default: op
+  kaizen.command.reload:
+    description: Reload config.yml and messages.yml.
+    default: op

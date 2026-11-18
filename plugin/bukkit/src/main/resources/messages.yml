@@ -1,0 +1,94 @@
+# Kaizen 改善 messages, in MiniMessage format: https://docs.advntr.dev/minimessage/format
+# <prefix> is available in every message. Set a message to "" to hide it.
+# Placeholders are listed above each message that has them.
+
+prefix: "<#d9668a>改善</#d9668a> <#5c5552>›</#5c5552>"
+
+command:
+  no-permission: "<prefix> <#c4bdb8>You don't have permission to do that."
+  invalid-syntax: "<prefix> <#c4bdb8>Usage: <#f2ece8><syntax>"
+  error: "<prefix> <#e5737a>Something went wrong. The console has the details."
+  busy: "<prefix> <#c4bdb8>Kaizen is still working on your last request. One moment."
+
+editor:
+  # <scope>
+  opening: "<prefix> <#c4bdb8>Collecting and encrypting <#f2ece8><scope></#f2ece8> config files…"
+  # <link> (the full URL), <minutes>
+  ready: |-
+    <prefix> <#f2ece8>Your editor is ready.
+    <prefix> <click:open_url:'<link>'><hover:show_text:'<#c4bdb8>Opens the editor in your browser'><#d9668a><u>Open the editor</u></#d9668a></hover></click> <#8a817c>· valid for <minutes> minutes, works once
+  # Shown to the console instead (it can't click).
+  ready-console: |-
+    <prefix> Your editor is ready (valid for <minutes> minutes):
+    <link>
+  # <files>, <secrets>
+  details: "<prefix> <#8a817c><files> files uploaded, end-to-end encrypted · <secrets> secret value(s) locked and kept on this server"
+  # <count>, <list>
+  skipped: "<prefix> <#8a817c><hover:show_text:'<#c4bdb8><list>'><count> file(s) skipped (hover for details)</hover>"
+  skipped-console: "<prefix> <#8a817c><count> file(s) skipped: <list>"
+  # <scope>
+  nothing-found: "<prefix> <#c4bdb8>No editable config files found for <#f2ece8><scope></#f2ece8>."
+  # <reason>
+  failed: "<prefix> <#e5737a>Couldn't open the editor: <#c4bdb8><reason>"
+  cooldown: "<prefix> <#c4bdb8>Please wait a few seconds before opening another editor."
+
+apply:
+  fetching: "<prefix> <#c4bdb8>Fetching and verifying your changes…"
+  # <files>, <added>, <removed>
+  header: "<prefix> <#f2ece8>Ready to apply changes to <files> file(s) <#8a817c>(<#9ccf8f>+<added></#9ccf8f> <#e5737a>−<removed></#e5737a>)</#8a817c>:"
+  # <path>, <added>, <removed>
+  file: "<#5c5552>   • <#f2ece8><path> <#8a817c>(<#9ccf8f>+<added></#9ccf8f> <#e5737a>−<removed></#e5737a>)"
+  # <key>
+  removed-secret: "<#5c5552>       <#e0b45c>⚠ the locked value <#f2ece8><key></#f2ece8> was deleted"
+  # <token>
+  buttons: "<prefix> <click:run_command:'/kaizen confirm <token>'><hover:show_text:'<#c4bdb8>Back up the originals, then write the changes'><#9ccf8f>[Confirm]</#9ccf8f></hover></click>  <click:run_command:'/kaizen cancel <token>'><hover:show_text:'<#c4bdb8>Discard these changes'><#e5737a>[Cancel]</#e5737a></hover></click> <#8a817c>· expires in 2 minutes"
+  buttons-console: "<prefix> Type <#9ccf8f>kaizen confirm <token></#9ccf8f> to apply or <#e5737a>kaizen cancel <token></#e5737a> to discard (expires in 2 minutes)."
+  cancelled: "<prefix> <#c4bdb8>Cancelled. Nothing was changed. Save again in the editor for a new code."
+  no-pending: "<prefix> <#c4bdb8>There is nothing waiting for confirmation (it may have expired)."
+  writing: "<prefix> <#c4bdb8>Backing up and writing files…"
+  # <files>, <backup>
+  done: "<prefix> <#9ccf8f>Applied changes to <files> file(s).</#9ccf8f> <#8a817c>Backup: <backup> · undo with <click:suggest_command:'/kaizen undo <backup>'><#d9668a>/kaizen undo</#d9668a></click>"
+  reload-header: "<prefix> <#f2ece8>These plugins need to reload their config:"
+  # <plugin>, <command>
+  reload-button: "<#5c5552>   • <#f2ece8><plugin></#f2ece8> <click:run_command:'/<command>'><hover:show_text:'<#c4bdb8>Runs /<command>'><#d9668a>[Reload]</#d9668a></hover></click>"
+  reload-button-console: "<#5c5552>   • <#f2ece8><plugin></#f2ece8> <#8a817c>→ run</#8a817c> <#d9668a><command></#d9668a>"
+  # <plugin>
+  reload-manual: "<#5c5552>   • <#f2ece8><plugin></#f2ece8> <#8a817c>(reload it with its own command, or restart)"
+  restart-server: "<prefix> <#e0b45c>Server config files changed. Restart the server for them to take effect."
+  # <reason>
+  failed: "<prefix> <#e5737a>Nothing was applied: <#c4bdb8><reason>"
+  # <reason>, <backup>
+  rolled-back: "<prefix> <#e5737a>Applying failed, so every file was restored to how it was. <#c4bdb8><reason>"
+  # <reason>, <files>, <backup>
+  not-restored: "<prefix> <#e5737a>Applying failed and these files could not be restored: <files>. The originals are in plugins/Kaizen/backups/<backup>/. <#c4bdb8><reason>"
+
+history:
+  header: "<prefix> <#f2ece8>Recent changes <#8a817c>(newest first)"
+  # <id>, <when>, <kind>, <actor>, <files>
+  entry: "<#5c5552>   • <hover:show_text:'<#c4bdb8><files>'><#f2ece8><id></#f2ece8></hover> <#8a817c><when> · <kind> by <actor></#8a817c> <click:suggest_command:'/kaizen undo <id>'><hover:show_text:'<#c4bdb8>Restore the files as they were before this'><#d9668a>[Undo]</#d9668a></hover></click>"
+  # <id>, <when>, <kind>, <actor>
+  entry-rolled-back: "<#5c5552>   • <#8a817c><st><id></st> <when> · <kind> by <actor> · rolled back"
+  empty: "<prefix> <#c4bdb8>No changes have been applied yet."
+
+undo:
+  # <id>, <files>
+  confirm: "<prefix> <#f2ece8>Undo <id>?</#f2ece8> <#8a817c>This restores <files> file(s) to how they were before it."
+  # <id>
+  done: "<prefix> <#9ccf8f>Restored the files from <id>.</#9ccf8f> <#8a817c>The current versions were backed up first, so this can be undone too."
+  # <id>
+  not-found: "<prefix> <#c4bdb8>There is no backup called <#f2ece8><id></#f2ece8>. See <#d9668a>/kaizen history</#d9668a>."
+  nothing: "<prefix> <#c4bdb8>There is nothing to undo yet."
+  # <files>
+  changed-since: "<prefix> <#e0b45c>⚠ These files were changed after that apply and will lose those later changes: <files>"
+  rolled-back: "<prefix> <#c4bdb8>That apply was already rolled back, so there is nothing to undo."
+
+reload:
+  done: "<prefix> <#9ccf8f>Reloaded config.yml and messages.yml."
+  # <count>
+  failed: "<prefix> <#e5737a>Reload failed with <count> problem(s); the previous settings are still active. Details are in the console."
+
+# Human words for a few placeholders
+words:
+  apply: "apply"
+  undo: "undo"
+  console: "console"

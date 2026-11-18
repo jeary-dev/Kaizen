@@ -23,6 +23,8 @@
     <modules>
         <!-- Pure Kotlin: crypto, protocol, redaction, file safety, apply transactions, HTTP. No Bukkit. -->
         <module>core</module>
+        <!-- The Spigot/Paper plugin: commands, config, messages, scheduling. Shades core into the jar. -->
+        <module>bukkit</module>
     </modules>
 
     <properties>

@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Kaizen 改善 · edit your server's configs in a real web editor
+#
+#  Your files are encrypted on this server before they are uploaded. The key
+#  stays in the editor link (after the #), which browsers never send to any
+#  server, so the editor server cannot read your configs.
+#
+#  Docs: https://github.com/jeary-dev/Kaizen
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Where the editor lives. Change this only if you host the web app yourself.
+# Must be https:// (plain http:// is allowed only for localhost while testing).
+web-url: "https://edit.jeary.dev"
+
+session:
+  # How long an editor link stays valid, e.g. 30m, 1h, 3h.
+  # The editor server has its own maximum (edit.jeary.dev: 6h) and caps this.
+  expire-after: 1h
+
+files:
+  # Files larger than this are never uploaded.
+  max-file-size-kb: 512
+  # The most files a single editor session can hold.
+  max-files: 2000
+
+  # The server's own config files that may be edited (paths relative to the
+  # server folder). Every file inside plugins/<Name>/ is editable as well,
+  # except the excluded ones below.
+  server-files:
+    - server.properties
+    - bukkit.yml
+    - spigot.yml
+    - commands.yml
+    - help.yml
+    - permissions.yml
+    - config/paper-global.yml
+    - config/paper-world-defaults.yml
+    - paper.yml
+    - purpur.yml
+    - pufferfish.yml
+
+  # Extra files and folders to never upload, as globs relative to the server
+  # folder: * matches within a folder name, ** matches across folders.
+  # These are added to the built-in list, which skips player data, storage,
+  # logs, caches, libraries and Kaizen's own folder.
+  exclude: []
+  #  - "plugins/MyPlugin/secret-stuff/**"
+
+  # Turn off the built-in exclude list. Not recommended.
+  disable-default-excludes: false
+
+redaction:
+  # Values whose key matches one of these patterns are replaced by locked
+  # placeholders before upload. The real values never leave this server and
+  # are put back when you apply. Patterns are case-insensitive regular
+  # expressions matched against the last part of the key (database.password
+  # is checked as "password").
+  # The built-in patterns already cover password, secret, token, api-key,
+  # webhook, private-key, credentials and similar names.
+  extra-key-patterns: []
+  #  - "license"
+
+  # Values that match one of these are redacted whatever their key is.
+  # Built in: JDBC URLs with passwords, user:password@ URLs, Discord and Slack
+  # webhooks, and private key blocks.
+  extra-value-patterns: []
+
+backups:
+  # Every apply backs up the original files to plugins/Kaizen/backups/.
+  # Keep at most this many backups...
+  keep: 50
+  # ...and none older than this. The newest backup is always kept.
+  max-age: 30d
+
+# After applying, Kaizen reminds you which plugins need a reload. If a plugin
+# can reload its own config with a command, put it here and Kaizen offers it
+# as a clickable button. Kaizen never reloads other plugins on its own.
+# Plugin folder name -> console command (no leading slash).
+reload-commands:
+  Essentials: "essentials reload"
+  LuckPerms: "lp reloadconfig"
+  WorldGuard: "wg reload"
+  Citizens: "citizens reload"
+  ViaVersion: "viaversion reload"
+
+http:
+  # How long to wait for the editor server before giving up.
+  timeout: 15s
