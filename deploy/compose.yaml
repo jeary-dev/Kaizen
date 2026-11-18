@@ -1,0 +1,44 @@
+# Kaizen web app behind an existing Cloudflare Tunnel (or any reverse proxy on the same host).
+#
+# Only one service, published on the host's loopback interface: nothing is reachable from the
+# network except through cloudflared, which runs on the host and connects to 127.0.0.1:3100.
+# See docs/deploy.md.
+
+name: kaizen
+
+services:
+  web:
+    build:
+      context: ../web
+    image: kaizen-web:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3000"
+    env_file:
+      - path: ./kaizen.env
+        required: false
+    environment:
+      KAIZEN_PUBLIC_URL: ${KAIZEN_PUBLIC_URL:-https://edit.jeary.dev}
+      # Safe only because the port above is bound to 127.0.0.1 and cloudflared sets this header
+      # on every request. If you expose the port directly, set it to "none".
+      KAIZEN_CLIENT_IP_HEADER: ${KAIZEN_CLIENT_IP_HEADER:-cf-connecting-ip}
+    volumes:
+      - kaizen-data:/data
+    # Hardening: nothing in the container needs to write outside /data and /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  kaizen-data:

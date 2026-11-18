@@ -27,3 +27,7 @@ plugin/.servers/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# deployment
+deploy/kaizen.env
+deploy/kaizen-backup.db
