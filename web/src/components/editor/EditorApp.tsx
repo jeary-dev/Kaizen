@@ -3,6 +3,7 @@
 import { openLintPanel } from "@codemirror/lint";
 import { openSearchPanel } from "@codemirror/search";
 import type { EditorView } from "@codemirror/view";
+import dynamic from "next/dynamic";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClockIcon, CloseIcon, LockIcon, MenuIcon, SearchIcon, ShieldIcon } from "@/components/ui/icons";
 import { Mark } from "@/components/ui/Mark";
@@ -12,8 +13,10 @@ import { ApplyCode } from "./ApplyCode";
 import { LANG_LABEL } from "./cm/languages";
 import { CodeEditor } from "./CodeEditor";
 import { FileTree } from "./FileTree";
-import { ReviewDialog } from "./ReviewDialog";
 import { Workspace } from "./workspace";
+
+// The review dialog pulls in the diff library; keep it out of the first load.
+const ReviewDialog = dynamic(() => import("./ReviewDialog").then((m) => m.ReviewDialog), { ssr: false });
 
 type Phase =
   | { kind: "loading" }
@@ -34,8 +37,8 @@ export function RemoteEditor({ sid, nonce }: { sid: string; nonce?: string }) {
         : new RemoteSession(sid, key),
     );
   }, [sid]);
-  if (source === null) return <Splash>Decrypting your configs…</Splash>;
-  if (source instanceof SessionError) return <ErrorScreen error={source} />;
+  if (source === null) return <Frame><Splash>Decrypting your configs…</Splash></Frame>;
+  if (source instanceof SessionError) return <Frame><ErrorScreen error={source} /></Frame>;
   return <EditorApp source={source} nonce={nonce} />;
 }
 
@@ -60,26 +63,30 @@ export function EditorApp({ source, nonce, banner, initialFile }: { source: Sess
     void run();
   };
 
-  if (phase.kind === "loading") return <Splash>Decrypting your configs…</Splash>;
-  if (phase.kind === "error") return <ErrorScreen error={phase.error} onRetry={phase.error.kind === "network" || phase.error.kind === "rate" ? load : undefined} />;
-  if (phase.kind === "closed") {
-    return (
-      <Centered title="Session closed">
-        <p>The editor session was discarded and its encrypted data deleted. Nothing was changed on your server.</p>
-      </Centered>
-    );
-  }
+  // The frame (and the banner in it) is the same element in every phase, so it paints with the
+  // server-rendered HTML instead of after the configs are decrypted.
   return (
-    <Editor
-      session={phase.session}
-      workspace={phase.workspace}
-      source={source}
-      nonce={nonce}
-      banner={banner}
-      initialFile={initialFile}
-      onDiscarded={() => setPhase({ kind: "closed", reason: "discarded" })}
-      onConflict={load}
-    />
+    <Frame banner={banner}>
+      {phase.kind === "loading" ? (
+        <Splash>Decrypting your configs…</Splash>
+      ) : phase.kind === "error" ? (
+        <ErrorScreen error={phase.error} onRetry={phase.error.kind === "network" || phase.error.kind === "rate" ? load : undefined} />
+      ) : phase.kind === "closed" ? (
+        <Centered title="Session closed">
+          <p>The editor session was discarded and its encrypted data deleted. Nothing was changed on your server.</p>
+        </Centered>
+      ) : (
+        <Editor
+          session={phase.session}
+          workspace={phase.workspace}
+          source={source}
+          nonce={nonce}
+          initialFile={initialFile}
+          onDiscarded={() => setPhase({ kind: "closed", reason: "discarded" })}
+          onConflict={load}
+        />
+      )}
+    </Frame>
   );
 }
 
@@ -88,7 +95,6 @@ function Editor({
   workspace,
   source,
   nonce,
-  banner,
   initialFile,
   onDiscarded,
   onConflict,
@@ -97,7 +103,6 @@ function Editor({
   workspace: Workspace;
   source: SessionSource;
   nonce?: string;
-  banner?: ReactNode;
   initialFile?: string;
   onDiscarded: () => void;
   onConflict: () => void;
@@ -172,8 +177,7 @@ function Editor({
   const changedCount = workspace.changedPaths().length;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
-      {banner}
+    <div className="flex h-full flex-col overflow-hidden">
       <header className="flex flex-none items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
         <button
           type="button"
@@ -279,20 +283,21 @@ function Editor({
 
 function Tabs({ workspace }: { workspace: Workspace }) {
   return (
-    <div role="tablist" aria-label="Open files" className="flex flex-none overflow-x-auto border-b border-line bg-surface">
+    // A list of buttons rather than an ARIA tablist: each open file also has its own close button,
+    // which a tablist may not contain.
+    <ul aria-label="Open files" className="flex flex-none overflow-x-auto border-b border-line bg-surface">
       {workspace.open.map((path) => {
         const active = workspace.active === path;
         const changed = workspace.isChanged(path);
         const name = path.slice(path.lastIndexOf("/") + 1);
         return (
-          <div
+          <li
             key={path}
             className={`group flex flex-none items-center border-r border-line ${active ? "bg-ink text-text shadow-[inset_0_-2px_0_var(--color-sakura)]" : "text-dim hover:text-muted"}`}
           >
             <button
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-current={active ? "true" : undefined}
               title={path}
               onClick={() => workspace.openFile(path)}
               onAuxClick={(e) => e.button === 1 && workspace.closeFile(path)}
@@ -304,15 +309,15 @@ function Tabs({ workspace }: { workspace: Workspace }) {
               type="button"
               onClick={() => workspace.closeFile(path)}
               aria-label={`Close ${name}`}
-              className="mr-1.5 grid size-5 place-items-center rounded text-faint hover:bg-white/10 hover:text-text"
+              className="mr-1 grid size-6 place-items-center rounded text-dim hover:bg-white/10 hover:text-text"
             >
               {changed ? <span className="size-2 rounded-full bg-blossom group-hover:hidden" aria-hidden="true" /> : null}
               <CloseIcon className={`size-3.5 ${changed ? "hidden group-hover:block" : ""}`} />
             </button>
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
@@ -419,9 +424,18 @@ function ConfirmDiscard({ open, onCancel, onConfirm }: { open: boolean; onCancel
 
 // ------------------------------------------------------------------------------------------------
 
+function Frame({ banner, children }: { banner?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden">
+      {banner}
+      <div className="relative min-h-0 flex-1 overflow-y-auto">{children}</div>
+    </div>
+  );
+}
+
 function Splash({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-h-dvh place-items-center" role="status">
+    <div className="grid h-full place-items-center" role="status">
       <div className="text-center">
         <p aria-hidden="true" className="font-kanji text-5xl text-sakura animate-pulse">
           改善
@@ -434,7 +448,7 @@ function Splash({ children }: { children: ReactNode }) {
 
 function Centered({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
-    <main className="grid min-h-dvh place-items-center p-6">
+    <main className="grid min-h-full place-items-center p-6">
       <div className="max-w-md text-center animate-fade-in">
         <Mark />
         <h1 className="mt-8 text-xl font-medium">{title}</h1>

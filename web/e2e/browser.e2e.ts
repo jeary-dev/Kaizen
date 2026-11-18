@@ -134,7 +134,7 @@ describe.skipIf(!browserPath)("editor in a browser", () => {
       await shot(page, `demo-${name}`);
       await page.getByRole("button", { name: "Show files" }).click();
       await page.getByRole("button", { name: /waystones\.json/ }).click();
-      await expect.poll(() => page.getByRole("tab", { name: "waystones.json" }).count()).toBe(1);
+      await expect.poll(() => page.getByRole("list", { name: "Open files" }).getByRole("button", { name: "waystones.json", exact: true }).count()).toBe(1);
       await expect.poll(() => page.locator("#kz-sidebar").boundingBox().then((b) => (b ? b.x + b.width : 0))).toBeLessThanOrEqual(0);
       await shot(page, `demo-${name}-json`);
       expect(watch.problems).toEqual([]);
@@ -223,6 +223,28 @@ describe.skipIf(!browserPath)("editor in a browser", () => {
       "server.properties": "#Minecraft server properties\r\nmotd=high tide\r\nrcon.password=KAIZEN_SECRET_1_t3st\r\n",
     });
     expect(changes.uploadSha256).toBe(await sha256Hex(plaintext));
+  }, 60_000);
+
+  it("landing, privacy and 404 pages are CSP-clean and fit a phone", async () => {
+    for (const [name, viewport] of [
+      ["desktop", { width: 1440, height: 900 }],
+      ["phone", { width: 390, height: 844 }],
+    ] as const) {
+      const { page, watch } = await newPage(browser, viewport);
+      for (const [path, heading] of [
+        ["/", /Edit plugin configs in your browser/],
+        ["/privacy", /^Privacy$/],
+        ["/nope", /This page doesn.t exist/],
+      ] as const) {
+        const res = await page.goto(`${web}${path}`);
+        expect(res?.status()).toBe(path === "/nope" ? 404 : 200);
+        await page.getByRole("heading", { level: 1, name: heading }).waitFor();
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        expect(overflow, `${path} on ${name} scrolls sideways`).toBeLessThanOrEqual(0);
+        await page.screenshot({ path: shots ? join(shots, `site-${path === "/" ? "home" : path.slice(1)}-${name}.png`) : undefined, fullPage: true });
+      }
+      expect(watch.problems.filter((p) => !p.includes("404"))).toEqual([]);
+    }
   }, 60_000);
 
   it("explains broken and expired links", async () => {

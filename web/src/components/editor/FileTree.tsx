@@ -67,7 +67,7 @@ export function FileTree({ workspace, files, onPick }: { workspace: Workspace; f
             placeholder="Search files"
             autoComplete="off"
             spellCheck={false}
-            className="w-full rounded-md border border-line bg-ink py-1.5 pr-2 pl-8 text-sm text-text placeholder:text-faint focus:border-sakura focus:outline-none"
+            className="w-full rounded-md border border-line bg-ink py-1.5 pr-2 pl-8 text-sm text-text placeholder:text-dim focus:border-sakura focus:outline-none"
           />
         </div>
         {groups.length > 1 ? (
@@ -102,7 +102,7 @@ export function FileTree({ workspace, files, onPick }: { workspace: Workspace; f
               </span>
               {g.id === SERVER ? <ServerIcon className="text-faint" /> : null}
               <span className="truncate">{g.label}</span>
-              <span className="ml-auto text-faint tabular-nums">{g.files.length}</span>
+              <span className="ml-auto text-dim tabular-nums">{g.files.length}</span>
             </summary>
             <ul role="list">
               {g.files.map(({ file, name }) => (
@@ -139,7 +139,7 @@ function FileRow({ workspace, file, name, onPick }: { workspace: Workspace; file
       >
         <FileIcon className={active ? "flex-none text-blossom" : "flex-none text-faint"} />
         <span className="min-w-0 flex-1 truncate">
-          {slash >= 0 ? <span className="text-faint">{name.slice(0, slash + 1)}</span> : null}
+          {slash >= 0 ? <span className="text-dim">{name.slice(0, slash + 1)}</span> : null}
           {name.slice(slash + 1)}
         </span>
         {file.secrets.length > 0 ? (

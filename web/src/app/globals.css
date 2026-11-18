@@ -95,7 +95,7 @@ body {
 
 /* CodeMirror fold markers and merge view, which can't take Tailwind classes. */
 .cm-kz-fold {
-  color: var(--color-faint);
+  color: var(--color-dim);
   padding: 0 2px;
   cursor: pointer;
 }
