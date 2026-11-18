@@ -1,0 +1,29 @@
+# Build output
+target/
+*.class
+node_modules/
+.next/
+out/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# Local data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+web/data/
+protocol/test-vectors/interop/
+plugin/.servers/
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
