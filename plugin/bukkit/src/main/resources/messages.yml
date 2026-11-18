@@ -64,10 +64,15 @@ apply:
 
 history:
   header: "<prefix> <#f2ece8>Recent changes <#8a817c>(newest first)"
-  # <id>, <when>, <kind>, <actor>, <files>
+  # <id>, <when>, <kind>, <actor>, <files> (one per line, shown on hover)
   entry: "<#5c5552>   • <hover:show_text:'<#c4bdb8><files>'><#f2ece8><id></#f2ece8></hover> <#8a817c><when> · <kind> by <actor></#8a817c> <click:suggest_command:'/kaizen undo <id>'><hover:show_text:'<#c4bdb8>Restore the files as they were before this'><#d9668a>[Undo]</#d9668a></hover></click>"
   # <id>, <when>, <kind>, <actor>
   entry-rolled-back: "<#5c5552>   • <#8a817c><st><id></st> <when> · <kind> by <actor> · rolled back"
+  # <id>, <when>, <kind>, <actor>, <count>
+  entry-console: "<#5c5552>   • <#f2ece8><id></#f2ece8> <#8a817c><when> · <kind> by <actor> · <count> file(s)"
+  # <page> (the next page number)
+  more: "<#5c5552>   … <click:run_command:'/kaizen history <page>'><hover:show_text:'<#c4bdb8>Show older changes'><#d9668a>older changes</#d9668a></hover></click>"
+  more-console: "<#5c5552>   … <#8a817c>older changes: kaizen history <page>"
   empty: "<prefix> <#c4bdb8>No changes have been applied yet."
 
 undo:
@@ -81,6 +86,11 @@ undo:
   # <files>
   changed-since: "<prefix> <#e0b45c>⚠ These files were changed after that apply and will lose those later changes: <files>"
   rolled-back: "<prefix> <#c4bdb8>That apply was already rolled back, so there is nothing to undo."
+  # <id>
+  identical: "<prefix> <#c4bdb8>The files already match how they were before <#f2ece8><id></#f2ece8>. Nothing to undo."
+  # <reason>
+  failed: "<prefix> <#e5737a>Nothing was undone: <#c4bdb8><reason>"
+  cancelled: "<prefix> <#c4bdb8>Cancelled. Nothing was changed."
 
 reload:
   done: "<prefix> <#9ccf8f>Reloaded config.yml and messages.yml."

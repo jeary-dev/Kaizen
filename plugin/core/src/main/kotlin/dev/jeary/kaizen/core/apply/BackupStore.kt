@@ -97,14 +97,17 @@ class BackupStore(val dir: Path) {
         }
     }
 
-    /** All backups, newest first. */
+    /**
+     * All backups, newest first. Ordered by the full-precision creation time: ids only have
+     * second precision, and an undo often lands in the same second as the change before it.
+     */
     fun list(): List<BackupManifest> {
         if (!Files.isDirectory(dir)) return emptyList()
         return Files.list(dir).use { s -> s.toList() }
             .map { it.fileName.toString() }
             .filter(::isValidId)
-            .sortedDescending()
             .mapNotNull(::get)
+            .sortedWith(compareByDescending<BackupManifest> { runCatching { Instant.parse(it.createdAt) }.getOrDefault(Instant.EPOCH) }.thenByDescending { it.id })
     }
 
     /**

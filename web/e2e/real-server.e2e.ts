@@ -119,6 +119,10 @@ const file = (o: Opened, path: string) => {
   return f;
 };
 
+const ORIGINAL_CONFIG =
+  '# ShopDemo settings\nshop:\n  title: "Sakura Market"\n  max-items: 27\n\ndatabase:\n  host: db.internal\n  password: "hunter2-very-secret"\n';
+const ORIGINAL_PROPS = "motd=hello\r\napi-key=sk_live_abcdef1234567890\r\n";
+
 describe.skipIf(!serverDir)("real server", () => {
   let mc: Console;
 
@@ -128,11 +132,8 @@ describe.skipIf(!serverDir)("real server", () => {
     // Fresh fixtures every run: a fake plugin with one YAML secret and one CRLF properties secret.
     const shop = join(serverDir, "plugins", "ShopDemo");
     mkdirSync(shop, { recursive: true });
-    writeFileSync(
-      join(shop, "config.yml"),
-      '# ShopDemo settings\nshop:\n  title: "Sakura Market"\n  max-items: 27\n\ndatabase:\n  host: db.internal\n  password: "hunter2-very-secret"\n',
-    );
-    writeFileSync(join(shop, "extra.properties"), "motd=hello\r\napi-key=sk_live_abcdef1234567890\r\n");
+    writeFileSync(join(shop, "config.yml"), ORIGINAL_CONFIG);
+    writeFileSync(join(shop, "extra.properties"), ORIGINAL_PROPS);
     const proc = spawn("java", ["-Xmx2G", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8", "-jar", jar, "--nogui"], { cwd: serverDir, stdio: "pipe" });
     mc = new Console(proc);
     await mc.waitFor(/Kaizen 1\.\d+\.\d+ ready/, 0, 180_000);
@@ -251,5 +252,43 @@ describe.skipIf(!serverDir)("real server", () => {
     expect(failure[1]).toMatch(/failed verification/);
     expect(sha(configPath)).toBe(before);
     expect(utf8Decode(readFileSync(configPath))).not.toContain("evil");
+  }, 90_000);
+
+  it("lists history and undoes the apply exactly, then redoes it", async () => {
+    const configPath = join(serverDir, "plugins", "ShopDemo", "config.yml");
+    const propsPath = join(serverDir, "plugins", "ShopDemo", "extra.properties");
+    const applied = readFileSync(configPath);
+
+    let m = mc.run("kaizen history");
+    await mc.waitFor(/Recent changes/, m);
+    const id = (await mc.waitFor(/• (\d{8}-\d{6}-[a-z0-9]{4}) [^\n]*apply by console · 2 file\(s\)/, m))[1];
+
+    // Cancelling changes nothing.
+    m = mc.run("kaizen undo");
+    let token = (await mc.waitFor(/kaizen confirm ([A-Za-z0-9]+)/, m))[1];
+    m = mc.run(`kaizen cancel ${token}`);
+    await mc.waitFor(/Cancelled\. Nothing was changed\./, m);
+    expect(readFileSync(configPath)).toEqual(applied);
+
+    m = mc.run("kaizen undo");
+    await mc.waitFor(new RegExp(`Undo ${id}\\? This restores 2 file\\(s\\)`), m);
+    token = (await mc.waitFor(/kaizen confirm ([A-Za-z0-9]+)/, m))[1];
+    m = mc.run(`kaizen confirm ${token}`);
+    await mc.waitFor(new RegExp(`Restored the files from ${id}`), m);
+    expect(readFileSync(configPath, "utf8")).toBe(ORIGINAL_CONFIG);
+    expect(readFileSync(propsPath, "latin1")).toBe(ORIGINAL_PROPS);
+
+    // The undo is in the history and can itself be undone.
+    m = mc.run("kaizen history");
+    await mc.waitFor(/undo by console · 2 file\(s\)/, m);
+    m = mc.run("kaizen undo");
+    token = (await mc.waitFor(/kaizen confirm ([A-Za-z0-9]+)/, m))[1];
+    m = mc.run(`kaizen confirm ${token}`);
+    await mc.waitFor(/Restored the files from/, m);
+    expect(readFileSync(configPath)).toEqual(applied);
+
+    // Unknown ids and bad input are explained.
+    m = mc.run("kaizen undo 20200101-000000-zzzz");
+    await mc.waitFor(/There is no backup called 20200101-000000-zzzz/, m);
   }, 90_000);
 });

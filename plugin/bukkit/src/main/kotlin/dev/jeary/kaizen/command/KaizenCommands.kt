@@ -3,12 +3,15 @@ package dev.jeary.kaizen.command
 import dev.jeary.kaizen.Kaizen
 import dev.jeary.kaizen.config.ConfigException
 import dev.jeary.kaizen.core.apply.ApplyFailedException
+import dev.jeary.kaizen.core.apply.BackupManifest
+import dev.jeary.kaizen.core.apply.LineDiff
 import dev.jeary.kaizen.core.files.Scope
 import dev.jeary.kaizen.core.http.ApiException
 import dev.jeary.kaizen.core.protocol.ProtocolException
 import dev.jeary.kaizen.core.protocol.Reason
 import dev.jeary.kaizen.core.service.KaizenException
 import dev.jeary.kaizen.core.service.PreparedApply
+import dev.jeary.kaizen.core.service.UndoPlan
 import dev.jeary.kaizen.platform.Messenger.Companion.arg
 import dev.jeary.kaizen.platform.Messenger.Companion.tag
 import kotlinx.coroutines.CancellationException
@@ -28,6 +31,7 @@ import org.incendo.cloud.exception.InvalidSyntaxException
 import org.incendo.cloud.exception.NoPermissionException
 import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.paper.LegacyPaperCommandManager
+import org.incendo.cloud.parser.standard.IntegerParser.integerParser
 import org.incendo.cloud.parser.standard.StringParser.quotedStringParser
 import org.incendo.cloud.parser.standard.StringParser.stringParser
 import org.incendo.cloud.suggestion.SuggestionProvider
@@ -83,6 +87,20 @@ class KaizenCommands(private val k: Kaizen) {
                 .permission("kaizen.command.apply")
                 .required("token", stringParser())
                 .handler { ctx -> cancel(ctx.sender(), ctx.get("token")) },
+        )
+        manager.command(
+            root.literal("history")
+                .permission("kaizen.command.history")
+                .optional("page", integerParser(1))
+                .handler { ctx -> history(ctx.sender(), ctx.getOrDefault("page", 1)) },
+        )
+        manager.command(
+            root.literal("undo")
+                .permission("kaizen.command.undo")
+                .optional("id", stringParser(), SuggestionProvider.blockingStrings { _, _ ->
+                    runCatching { k.undo.history().filter { it.status == BackupManifest.Status.APPLIED }.take(10).map { it.id } }.getOrDefault(emptyList())
+                })
+                .handler { ctx -> undo(ctx.sender(), ctx.optional<String>("id").orElse(null)) },
         )
         manager.command(
             root.literal("reload")
@@ -159,27 +177,98 @@ class KaizenCommands(private val k: Kaizen) {
         messenger.sendFor(sender, "apply.buttons", arg("token", token))
     }
 
+    /** `[Confirm]` for both applies and undos: the token says which one is waiting. */
     private fun confirm(sender: CommandSender, token: String) = launch(sender) {
-        val prepared = k.confirmations.take<PreparedApply>(senderKey(sender), token)
-        if (prepared == null) {
-            messenger.send(sender, "apply.no-pending")
-            return@launch
+        when (val pending = k.confirmations.take<Any>(senderKey(sender), token)) {
+            is PreparedApply -> commitApply(sender, pending)
+            is UndoPlan -> commitUndo(sender, pending)
+            else -> messenger.send(sender, "apply.no-pending")
         }
+    }
+
+    private suspend fun commitApply(sender: CommandSender, prepared: PreparedApply) {
         messenger.send(sender, "apply.writing")
         val manifest = try {
             writeLock.withLock { withContext(Dispatchers.IO) { k.applier.commit(prepared, sender.name) } }
         } catch (e: ApplyFailedException) {
-            k.logger.log(Level.WARNING, "Apply failed: ${e.message}", e.cause)
-            if (e.rolledBack) messenger.send(sender, "apply.rolled-back", tag("reason", e.cause?.message ?: ""), tag("backup", e.backupId ?: "-"))
-            else messenger.send(sender, "apply.not-restored", tag("reason", e.cause?.message ?: ""), tag("files", e.notRestored.joinToString()), tag("backup", e.backupId ?: "-"))
-            return@launch
+            reportFailure(sender, "Apply", e)
+            return
         } catch (e: KaizenException) {
             messenger.send(sender, "apply.failed", tag("reason", e.message ?: e.key))
-            return@launch
+            return
         }
         messenger.send(sender, "apply.done", tag("files", manifest.files.size), arg("backup", manifest.id))
         k.logger.info("${sender.name} applied editor changes to ${manifest.files.size} file(s): ${manifest.files.joinToString { it.path }} (backup ${manifest.id})")
         reloadReminders(sender, prepared.plan.plugins, prepared.plan.touchesServerFiles)
+    }
+
+    private suspend fun commitUndo(sender: CommandSender, plan: UndoPlan) {
+        messenger.send(sender, "apply.writing")
+        val manifest = try {
+            writeLock.withLock { withContext(Dispatchers.IO) { k.undo.commit(plan, sender.name) } }
+        } catch (e: ApplyFailedException) {
+            reportFailure(sender, "Undo", e)
+            return
+        }
+        messenger.send(sender, "undo.done", tag("id", plan.target.id))
+        k.logger.info("${sender.name} undid ${plan.target.id}, restoring ${manifest.files.size} file(s): ${manifest.files.joinToString { it.path }} (backup ${manifest.id})")
+        reloadReminders(sender, plan.plugins, plan.touchesServerFiles)
+    }
+
+    private fun reportFailure(sender: CommandSender, what: String, e: ApplyFailedException) {
+        k.logger.log(Level.WARNING, "$what failed: ${e.message}", e.cause)
+        val reason = e.cause?.message ?: e.message ?: ""
+        if (e.rolledBack) messenger.send(sender, "apply.rolled-back", tag("reason", reason), tag("backup", e.backupId ?: "-"))
+        else messenger.send(sender, "apply.not-restored", tag("reason", reason), tag("files", e.notRestored.joinToString()), tag("backup", e.backupId ?: "-"))
+    }
+
+    // ---------------------------------------------------------------------------------------------
+
+    private fun history(sender: CommandSender, page: Int) = launch(sender) {
+        val all = withContext(Dispatchers.IO) { k.undo.history() }
+        if (all.isEmpty()) {
+            messenger.send(sender, "history.empty")
+            return@launch
+        }
+        val pages = (all.size + HISTORY_PAGE - 1) / HISTORY_PAGE
+        val current = page.coerceIn(1, pages)
+        val now = Instant.now()
+        messenger.send(sender, "history.header")
+        for (m in all.drop((current - 1) * HISTORY_PAGE).take(HISTORY_PAGE)) {
+            val kind = messenger.messages.raw(if (m.kind == BackupManifest.Kind.UNDO) "words.undo" else "words.apply")
+            val tags = arrayOf(
+                arg("id", m.id),
+                tag("when", ago(m.createdAt, now)),
+                tag("kind", kind),
+                tag("actor", if (m.actor == "CONSOLE") messenger.messages.raw("words.console") else m.actor),
+                tag("files", m.files.joinToString("\n") { it.path }),
+                tag("count", m.files.size),
+            )
+            if (m.status == BackupManifest.Status.ROLLED_BACK) messenger.send(sender, "history.entry-rolled-back", *tags)
+            else messenger.sendFor(sender, "history.entry", *tags)
+        }
+        if (current < pages) messenger.sendFor(sender, "history.more", arg("page", (current + 1).toString()))
+    }
+
+    private fun undo(sender: CommandSender, id: String?) = launch(sender) {
+        val plan = try {
+            withContext(Dispatchers.IO) { k.undo.plan(id) }
+        } catch (e: KaizenException) {
+            when (e.key) {
+                "undo.nothing", "undo.rolled-back" -> messenger.send(sender, e.key)
+                "undo.not-found", "undo.identical" -> messenger.send(sender, e.key, tag("id", id ?: "the last change"))
+                else -> messenger.send(sender, "undo.failed", tag("reason", e.message ?: e.key))
+            }
+            return@launch
+        }
+        val token = k.confirmations.put(senderKey(sender), plan)
+        messenger.send(sender, "undo.confirm", tag("id", plan.target.id), tag("files", plan.changes.size))
+        for (change in plan.changes) {
+            val stat = LineDiff.stat(change.before.toString(Charsets.UTF_8), change.after.toString(Charsets.UTF_8))
+            messenger.send(sender, "apply.file", tag("path", change.path), tag("added", stat.added), tag("removed", stat.removed))
+        }
+        if (plan.changedSince.isNotEmpty()) messenger.send(sender, "undo.changed-since", tag("files", plan.changedSince.joinToString()))
+        messenger.sendFor(sender, "apply.buttons", arg("token", token))
     }
 
     /** Tells the admin what needs reloading. Kaizen never reloads other plugins by itself. */
@@ -198,8 +287,12 @@ class KaizenCommands(private val k: Kaizen) {
     }
 
     private fun cancel(sender: CommandSender, token: String) {
-        val prepared = k.confirmations.take<PreparedApply>(senderKey(sender), token)
-        messenger.send(sender, if (prepared == null) "apply.no-pending" else "apply.cancelled")
+        val key = when (k.confirmations.take<Any>(senderKey(sender), token)) {
+            is PreparedApply -> "apply.cancelled"
+            is UndoPlan -> "undo.cancelled"
+            else -> "apply.no-pending"
+        }
+        messenger.send(sender, key)
     }
 
     private fun reload(sender: CommandSender) = launch(sender) {
@@ -265,6 +358,21 @@ class KaizenCommands(private val k: Kaizen) {
     }
 
     companion object {
+        private const val HISTORY_PAGE = 8
+
         fun senderKey(sender: CommandSender): String = (sender as? Player)?.uniqueId?.toString() ?: "console:${sender.name}"
+
+        /** "just now", "5m ago", "3h ago", "2d ago", then the date. */
+        fun ago(iso: String, now: Instant): String {
+            val then = runCatching { Instant.parse(iso) }.getOrNull() ?: return iso
+            val s = Duration.between(then, now).seconds.coerceAtLeast(0)
+            return when {
+                s < 60 -> "just now"
+                s < 3600 -> "${s / 60}m ago"
+                s < 86_400 -> "${s / 3600}h ago"
+                s < 7 * 86_400 -> "${s / 86_400}d ago"
+                else -> iso.substring(0, 10)
+            }
+        }
     }
 }

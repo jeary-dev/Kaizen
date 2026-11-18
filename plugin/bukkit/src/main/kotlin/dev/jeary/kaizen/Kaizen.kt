@@ -13,6 +13,7 @@ import dev.jeary.kaizen.core.http.KaizenApi
 import dev.jeary.kaizen.core.protocol.ServerInfo
 import dev.jeary.kaizen.core.service.ApplyService
 import dev.jeary.kaizen.core.service.EditorService
+import dev.jeary.kaizen.core.service.UndoService
 import dev.jeary.kaizen.core.session.SessionStore
 import dev.jeary.kaizen.platform.MainThreadDispatcher
 import dev.jeary.kaizen.platform.Messenger
@@ -65,6 +66,9 @@ class Kaizen(val plugin: KaizenPlugin) {
     @Volatile lateinit var applier: ApplyService
         private set
 
+    @Volatile lateinit var undo: UndoService
+        private set
+
     val serverInfo: ServerInfo by lazy {
         ServerInfo("${Bukkit.getName()} ${Bukkit.getBukkitVersion().substringBefore('-')}", plugin.description.version)
     }
@@ -105,7 +109,9 @@ class Kaizen(val plugin: KaizenPlugin) {
         collector = ConfigCollector(guard)
         val api = KaizenApi(settings.webUrl, "Kaizen/${plugin.description.version} (+https://github.com/jeary-dev/Kaizen)", settings.httpTimeout)
         editor = EditorService(collector, api, sessions, owner, settings.webUrl)
-        applier = ApplyService(api, sessions, owner, guard, ApplyTransaction(backups))
+        val transaction = ApplyTransaction(backups)
+        applier = ApplyService(api, sessions, owner, guard, transaction)
+        undo = UndoService(backups, guard, transaction)
     }
 
     fun startHousekeeping() {

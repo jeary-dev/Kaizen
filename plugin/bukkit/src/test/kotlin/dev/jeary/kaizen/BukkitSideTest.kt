@@ -1,5 +1,6 @@
 package dev.jeary.kaizen
 
+import dev.jeary.kaizen.command.KaizenCommands
 import dev.jeary.kaizen.config.ConfigException
 import dev.jeary.kaizen.config.ConfigReader
 import dev.jeary.kaizen.config.Messages
@@ -97,7 +98,7 @@ class BukkitSideTest {
         assertTrue(defaults.size > 40)
         val mm = MiniMessage.miniMessage()
         val tags = TagResolver.resolver(
-            listOf("prefix", "link", "token", "command", "backup", "id").map { Placeholder.parsed(it, "x") } +
+            listOf("prefix", "link", "token", "command", "backup", "id", "page").map { Placeholder.parsed(it, "x") } +
                 listOf("scope", "minutes", "files", "secrets", "count", "list", "reason", "added", "removed", "path", "key", "plugin", "when", "kind", "actor", "syntax")
                     .map { Placeholder.unparsed(it, "v") },
         )
@@ -119,6 +120,17 @@ class BukkitSideTest {
         assertEquals(4, libraries.size)
         for (lib in libraries) assertTrue(Regex("^[\\w.-]+:[\\w.-]+:\\d+(\\.\\d+)+$").matches(lib), "not pinned: $lib")
         assertEquals("op", plugin.getString("permissions.kaizen.use.default"))
+    }
+
+    @Test
+    fun `history times read naturally`() {
+        val now = Instant.parse("2026-11-18T13:00:00Z")
+        val ago = { s: Long -> KaizenCommands.ago(now.minusSeconds(s).toString(), now) }
+        assertEquals("just now", ago(20))
+        assertEquals("5m ago", ago(300))
+        assertEquals("3h ago", ago(3 * 3600 + 59))
+        assertEquals("2d ago", ago(2 * 86_400))
+        assertEquals("2026-11-01", ago(17 * 86_400))
     }
 
     @Test
