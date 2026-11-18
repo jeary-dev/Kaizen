@@ -206,7 +206,8 @@ the whole change set:
 Apply-time checks, per file:
 
 - The file on disk still hashes to `baseSha256`. If it doesn't, the file was changed on disk
-  after the editor opened, and that file is refused.
+  after the editor opened. The plugin then refuses the **whole** change set, not just that file,
+  because a partial apply could leave related files out of step. The admin opens a fresh editor.
 - Placeholders follow the rules in §8.
 - Writes stay inside the allowed roots and never follow symlinks.
 
